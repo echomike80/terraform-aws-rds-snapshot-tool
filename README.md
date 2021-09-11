@@ -13,7 +13,7 @@ Terraform 0.12 and newer.
 Source account:
 
 ```hcl
-module "db_hybris_snapshot_tool_src" {
+module "rds_snapshot_tool_src" {
   source                = "/path/to/terraform-aws-rds-snapshot-tool"
 
   name                  = var.name
@@ -30,7 +30,7 @@ module "db_hybris_snapshot_tool_src" {
 Destination account:
 
 ```hcl
-module "db_hybris_snapshot_tool_dest" {
+module "rds_snapshot_tool_dest" {
   source                = "/path/to/terraform-aws-rds-snapshot-tool"
 
   name                  = var.name
@@ -131,16 +131,14 @@ No modules.
 | <a name="input_is_source_account"></a> [is\_source\_account](#input\_is\_source\_account) | Provisioning in source account? | `bool` | `true` | no |
 | <a name="input_kms_key_destination"></a> [kms\_key\_destination](#input\_kms\_key\_destination) | Set to the ARN for the KMS key in the destination region to re-encrypt encrypted snapshots. Leave None if you are not using encryption. | `string` | `"None"` | no |
 | <a name="input_kms_key_source"></a> [kms\_key\_source](#input\_kms\_key\_source) | Set to the ARN for the KMS key in the SOURCE region to re-encrypt encrypted snapshots. Leave None if you are not using encryption. | `string` | `"None"` | no |
-| <a name="input_lambda_cw_log_retention"></a> [lambda\_cw\_log\_retention](#input\_lambda\_cw\_log\_retention) | Number of days to retain logs from the lambda functions in CloudWatch Logs. | `number` | `7` | 
-no |
+| <a name="input_lambda_cw_log_retention"></a> [lambda\_cw\_log\_retention](#input\_lambda\_cw\_log\_retention) | Number of days to retain logs from the lambda functions in CloudWatch Logs. | `number` | `7` | no |
 | <a name="input_log_level"></a> [log\_level](#input\_log\_level) | Log level for Lambda functions (DEBUG, INFO, WARN, ERROR, CRITICAL are valid values). | `string` | `"ERROR"` | no |
 | <a name="input_name"></a> [name](#input\_name) | Name to be used on all resources | `string` | n/a | yes |
 | <a name="input_region"></a> [region](#input\_region) | Name of region from the state machine | `string` | `"eu-central-1"` | no |
 | <a name="input_region_dest"></a> [region\_dest](#input\_region\_dest) | Destination region for snapshots. | `string` | `"eu-central-1"` | no |
 | <a name="input_retention_days"></a> [retention\_days](#input\_retention\_days) | Number of days to keep snapshots in retention before deleting them. | `number` | `28` | no |
 | <a name="input_share_snapshots"></a> [share\_snapshots](#input\_share\_snapshots) | Set to true to enable sharing of snapshots based on destination\_account and instance\_name\_pattern. Set to false to disable. | `bool` | `true` | no |
-| <a name="input_snapshot_pattern"></a> [snapshot\_pattern](#input\_snapshot\_pattern) | Python regex for matching instance names to backup. Use "ALL\_SNAPSHOTS" to back up every RDS instance in the region. | 
-`string` | `"ALL_SNAPSHOTS"` | no |
+| <a name="input_snapshot_pattern"></a> [snapshot\_pattern](#input\_snapshot\_pattern) | Python regex for matching instance names to backup. Use "ALL\_SNAPSHOTS" to back up every RDS instance in the region. | `string` | `"ALL_SNAPSHOTS"` | no |
 | <a name="input_source_region_override"></a> [source\_region\_override](#input\_source\_region\_override) | Set to the region where your RDS instances run, only if such region does not support Step Functions. Leave as NO otherwise. | `string` | `"NO"` | no |
 | <a name="input_tagged_instance"></a> [tagged\_instance](#input\_tagged\_instance) | Set to TRUE to filter instances that have tag CopyDBSnapshot set to True. Set to FALSE to disable. | `string` | `"FALSE"` | no |
 | <a name="input_tags"></a> [tags](#input\_tags) | A mapping of tags to assign to the resource | `map(string)` | `{}` | no |
