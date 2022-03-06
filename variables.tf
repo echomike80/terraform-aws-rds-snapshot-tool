@@ -1,3 +1,9 @@
+variable "backup_automatically" {
+  description = "Enable taking snapshots automatically"
+  type        = bool
+  default     = true
+}
+
 variable "backup_interval" {
   description = "Interval for backups in hours. Default is 24."
   type        = number

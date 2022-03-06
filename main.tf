@@ -5,17 +5,18 @@ data "aws_caller_identity" "current" {
 # CloudWatch
 ##############
 
-resource "aws_cloudwatch_event_rule" "backup_rds" {
+resource "aws_cloudwatch_event_rule" "take_snapshots_rds" {
   count         = var.is_source_account ? 1 : 0
-  name          = format("cw-eventrule-%s-backupRDS", var.name)
+  is_enabled    = var.backup_automatically ? true : false
+  name          = format("cw-eventrule-%s-takeSnapshotsRDS", var.name)
   description   = "Triggers the takeSnapshotsRDS state machine"
 
   schedule_expression   = "cron(${var.backup_schedule})"
 }
 
-resource "aws_cloudwatch_event_target" "backup_rds" {
+resource "aws_cloudwatch_event_target" "take_snapshots_rds" {
   count     = var.is_source_account ? 1 : 0
-  rule      = aws_cloudwatch_event_rule.backup_rds[0].name
+  rule      = aws_cloudwatch_event_rule.take_snapshots_rds[0].name
   arn       = aws_sfn_state_machine.take_snapshots_rds[0].arn
   role_arn  = aws_iam_role.events[0].arn
 }
@@ -125,13 +126,13 @@ resource "aws_cloudwatch_log_group" "delete_old_snapshots_dest_rds" {
   tags = var.tags
 }
 
-resource "aws_cloudwatch_metric_alarm" "backup_rds_failed" {
+resource "aws_cloudwatch_metric_alarm" "take_snapshots_rds_failed" {
   count                     = var.is_source_account ? 1 : 0
-  alarm_name                = format("cw-alarm-%s-backupsFailedRDS", var.name)
+  alarm_name                = format("cw-alarm-%s-failedSnapshotsRDS", var.name)
   namespace                 = "AWS/States"
   evaluation_periods        = "1"
   period                    = "300"
-  alarm_actions             = [aws_sns_topic.backup_rds_failed[0].arn]
+  alarm_actions             = [aws_sns_topic.take_snapshots_rds_failed[0].arn]
   statistic                 = "Sum"
   comparison_operator       = "GreaterThanOrEqualToThreshold"
   threshold                 = "1.0"
@@ -364,9 +365,9 @@ resource "aws_iam_role_policy_attachment" "events" {
   policy_arn    = aws_iam_policy.events[0].arn
 }
 
-resource "aws_iam_role" "snapshots_dest_rds" {
+resource "aws_iam_role" "lambda_snapshots_dest_rds" {
   count     = var.is_source_account == false ? 1 : 0
-  name      = format("rl-%s-snapshotsRDS", var.name)
+  name      = format("rl-%s-lambdaSnapshotsRDS", var.name)
 
   assume_role_policy = <<EOF
 {
@@ -384,7 +385,7 @@ resource "aws_iam_role" "snapshots_dest_rds" {
 EOF
 }
 
-resource "aws_iam_policy" "snapshots_dest_rds" {
+resource "aws_iam_policy" "lambda_snapshots_dest_rds" {
   count         = var.is_source_account == false ? 1 : 0
   name          = format("pol-%s-lambdaSnapshotsRDS", var.name)
 
@@ -452,10 +453,10 @@ resource "aws_iam_policy" "snapshots_dest_rds" {
 EOF
 }
 
-resource "aws_iam_role_policy_attachment" "snapshots_dest_rds" {
+resource "aws_iam_role_policy_attachment" "lambda_snapshots_dest_rds" {
   count         = var.is_source_account == false ? 1 : 0
-  role          = aws_iam_role.snapshots_dest_rds[0].name
-  policy_arn    = aws_iam_policy.snapshots_dest_rds[0].arn
+  role          = aws_iam_role.lambda_snapshots_dest_rds[0].name
+  policy_arn    = aws_iam_policy.lambda_snapshots_dest_rds[0].arn
 }
 
 ##############
@@ -548,7 +549,7 @@ resource "aws_lambda_function" "copy_snapshots_dest_rds" {
   count         = var.is_source_account == false ? 1 : 0
   filename      = var.cross_account_copy ? "${path.module}/lambda_functions/copy_snapshots_dest_rds.zip" : "${path.module}/lambda_functions/copy_snapshots_no_x_account_rds.zip"
   function_name = format("fn-%s-copySnapshotsDestRDS", var.name)
-  role          = aws_iam_role.snapshots_dest_rds[0].arn
+  role          = aws_iam_role.lambda_snapshots_dest_rds[0].arn
   handler       = "lambda_function.lambda_handler"
 
   description   = "This functions copies snapshots for RDS Instances shared with this account. It checks for existing snapshots following the pattern specified in the environment variables with the following format: <dbInstanceIdentifier-identifier>-YYYY-MM-DD-HH-MM."
@@ -579,7 +580,7 @@ resource "aws_lambda_function" "delete_old_snapshots_dest_rds" {
   count         = var.is_source_account  == false && var.delete_old_snapshots ? 1 : 0
   filename      = var.cross_account_copy ? "${path.module}/lambda_functions/delete_old_snapshots_dest_rds.zip" : "${path.module}/lambda_functions/delete_old_snapshots_no_x_account_rds.zip"
   function_name = format("fn-%s-deleteOldSnapshotsDestRDS", var.name)
-  role          = aws_iam_role.snapshots_dest_rds[0].arn
+  role          = aws_iam_role.lambda_snapshots_dest_rds[0].arn
   handler       = "lambda_function.lambda_handler"
 
   description   = "This function enforces retention on the snapshots shared with the destination account."
@@ -604,10 +605,10 @@ resource "aws_lambda_function" "delete_old_snapshots_dest_rds" {
 # SNS
 ##############
 
-resource "aws_sns_topic" "backup_rds_failed" {
+resource "aws_sns_topic" "take_snapshots_rds_failed" {
   count         = var.is_source_account ? 1 : 0
-  name          = format("sns-%s-backupsFailedRDS", var.name)
-  display_name  = format("sns-%s-backupsFailedRDS", var.name)
+  name          = format("sns-%s-failedSnapshotsRDS", var.name)
+  display_name  = format("sns-%s-failedSnapshotsRDS", var.name)
 }
 
 resource "aws_sns_topic" "share_snapshots_rds_failed" {
@@ -634,9 +635,9 @@ resource "aws_sns_topic" "delete_old_snapshots_dest_rds_failed" {
   display_name  = format("sns-%s-deleteOldSnapshotsDestRDS", var.name)
 }
 
-resource "aws_sns_topic_policy" "backup_rds_failed" {
+resource "aws_sns_topic_policy" "take_snapshots_rds_failed" {
   count     = var.is_source_account ? 1 : 0
-  arn       = aws_sns_topic.backup_rds_failed[0].arn
+  arn       = aws_sns_topic.take_snapshots_rds_failed[0].arn
 
   policy    = data.aws_iam_policy_document.sns_topic_policy.json
 }
